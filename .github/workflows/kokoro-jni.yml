@@ -1,0 +1,58 @@
+name: Kokoro JNI (Android arm64)
+
+on:
+  push:
+    branches: [kokoro-reader]
+    tags: ['kokoro-jni-v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build libkokoro_tts_jni.so
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Android NDK
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r29
+
+      - uses: bazel-contrib/setup-bazel@0.14.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Build
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        run: |
+          bazel build -c opt --config=android_arm64 --local_resources=memory=HOST_RAM*.8 \
+            //omni/text2speech/jni:libkokoro_tts_jni.so
+          mkdir -p out/arm64-v8a
+          cp bazel-bin/omni/text2speech/jni/libkokoro_tts_jni.so out/arm64-v8a/
+          sha256sum out/arm64-v8a/libkokoro_tts_jni.so | tee out/arm64-v8a/libkokoro_tts_jni.so.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libkokoro_tts_jni-arm64-v8a
+          path: out/arm64-v8a/
+
+      - uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            out/arm64-v8a/libkokoro_tts_jni.so
+            out/arm64-v8a/libkokoro_tts_jni.so.sha256
