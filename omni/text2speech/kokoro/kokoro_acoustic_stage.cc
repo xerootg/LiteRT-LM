@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <iostream>
 #include <utility>
 #include <vector>
 
@@ -245,6 +246,16 @@ absl::Status KokoroAcousticStage::SliceNextTextChunk() {
                << " effective=" << max_capacity;
   std::vector<kokoro::TokenSlice> slices =
       kokoro::SliceTokenIds(full_token_ids, max_capacity);
+  {
+    std::string sizes;
+    for (const auto& sl : slices) {
+      if (!sizes.empty()) sizes += ",";
+      sizes += std::to_string(sl.token_ids.size());
+    }
+    std::cerr << "KOKORO_SLICES chunk_tokens=" << full_token_ids.size()
+                   << " capacity=" << max_capacity << " slices=" << slices.size()
+                   << " sizes=" << sizes << std::endl;
+  }
   // Kokoro's Chinese and Japanese voices emit ~400 ms of leading silence at BOS
   // and ~750 ms of trailing silence at EOS (~1.16 s between sentences, versus
   // ~430 ms trailing in English). Marking CJK chunk edges as `kPunctuation`

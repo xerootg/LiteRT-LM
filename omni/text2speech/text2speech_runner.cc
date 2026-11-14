@@ -83,6 +83,11 @@ ABSL_FLAG(int, target_bucket, 0,
 ABSL_FLAG(std::string, voice, "af_heart",
           "Voice profile name or file for Kokoro (e.g. 'af_heart', 'af_bella', "
           "'af_sarah', 'am_michael', 'bf_emma', etc.).");
+ABSL_FLAG(int, max_chunk_chars, 0,
+          "Kokoro only. Text chunk size in characters (0 = runtime default, about 100). "
+          "Larger values need a model exported with a larger phoneme bucket.");
+ABSL_FLAG(bool, sentence_delimiters_only, false,
+          "Kokoro only. Split chunks only at . ? ! and newline (not ; or the long dash).");
 
 namespace {
 
@@ -195,6 +200,15 @@ absl::Status Run() {
   const std::string requested_voice_str = absl::GetFlag(FLAGS_voice);
   if (!requested_voice_str.empty()) {
     session_config.set_voice(requested_voice_str);
+  if (absl::GetFlag(FLAGS_max_chunk_chars) > 0) {
+    session_config.mutable_text_chunk_config()->set_max_buffer_size(
+        absl::GetFlag(FLAGS_max_chunk_chars));
+  }
+  if (absl::GetFlag(FLAGS_sentence_delimiters_only)) {
+    auto* chunk = session_config.mutable_text_chunk_config();
+    chunk->clear_delimiters();
+    for (const char* d : {".", "?", "!", "\n"}) chunk->add_delimiters(d);
+  }
   }
 
   ABSL_ASSIGN_OR_RETURN(auto engine, litert::omni::OmniEngine::Create(
