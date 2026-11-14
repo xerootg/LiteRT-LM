@@ -11,7 +11,8 @@ cc_binary(
     linkshared = True,
     linkstatic = True,
     linkopts = select({
-        "@platforms//os:android": ["-llog", "-landroid"],
+        # 16 KB page size: Android 15+ warns (and 16 KB-page devices refuse) unless LOAD segments are 16 KB aligned.
+        "@platforms//os:android": ["-llog", "-landroid", "-Wl,-z,max-page-size=16384"],
         "//conditions:default": [],
     }),
     deps = [
